@@ -1,5 +1,9 @@
 mod trello;
-mod file_manager;
+mod dict;
+mod extractor;
+mod files;
+mod matcher;
+mod executor;
 
 fn main() {
     println!("Hello, world!");

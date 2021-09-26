@@ -1,52 +1,65 @@
 use serde::{Serialize, Deserialize};
 use std::borrow::{Borrow, BorrowMut};
+use serde_json::Value;
+use crate::files::{read_file_into_string, cfg_json_into};
 
-struct TrelloManager {
+pub struct TrelloManager {
     prefix: &'static str,
-    key: &'static str,
-    token: &'static str,
-
+    cred: TrelloCred,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct Board {
-    id: String,
-    name: String,
+pub struct TrelloCred {
+    key: String,
+    token: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Board {
+    pub id: String,
+    pub name: String,
     closed: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct Card {
-    id: String,
-    name: String,
+pub struct Card {
+    pub id: String,
+    pub name: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct List {
-    id: String,
-    name: String,
+pub struct List {
+    pub id: String,
+    pub name: String,
 }
 
 impl TrelloManager {
-    fn new(key: &'static str, token: &'static str) -> Self {
-        TrelloManager { prefix: "https://api.trello.com", key, token }
-    }
+    pub fn from_file(path: &str) -> Self {
+        let cred =
+            read_file_into_string(path)
+                .map(|s| cfg_json_into(&s, "cred should have token and key"))
+                .expect("the cfg file should exist");
 
-    fn get_req<'a, T>(&self, url: &str) -> std::io::Result<T>
+        TrelloManager { prefix: "https://api.trello.com", cred }
+    }
+}
+
+impl TrelloManager {
+    fn get_req<T>(&self, url: &str) -> std::io::Result<T>
         where T: for<'de> Deserialize<'de> {
         ureq::get(format!("{}{}", self.prefix, url).as_str())
-            .query("key", self.key)
-            .query("token", self.token)
+            .query("key", self.cred.key.as_str())
+            .query("token", self.cred.token.as_str())
             .set("Accept", "application/json")
             .call()
             .expect("should get the result")
             .into_json::<T>()
     }
-    fn post_req<'a, T>(&self, url: &str, params: Vec<(&str, &str)>) -> std::io::Result<T>
+    fn post_req<T>(&self, url: &str, params: Vec<(&str, &str)>) -> std::io::Result<T>
         where T: for<'de> Deserialize<'de> {
         let mut r = ureq::post(format!("{}{}", self.prefix, url).as_str())
-            .query("key", self.key)
-            .query("token", self.token)
+            .query("key", self.cred.key.as_str())
+            .query("token", self.cred.token.as_str())
             .set("Accept", "application/json");
 
         for (k, v) in params.into_iter() {
@@ -55,43 +68,63 @@ impl TrelloManager {
         r.call().expect("should get the result").into_json::<T>()
     }
 
+    fn put_req<T>(&self, url: &str, params: Vec<(&str, &str)>) -> std::io::Result<T>
+        where T: for<'de> Deserialize<'de> {
+        let mut r = ureq::put(format!("{}{}", self.prefix, url).as_str())
+            .query("key", self.cred.key.as_str())
+            .query("token", self.cred.token.as_str())
+            .set("Accept", "application/json");
 
-    fn boards(&self) -> Vec<Board> {
+        for (k, v) in params.into_iter() {
+            r = r.query(k, v);
+        }
+        r.call().expect("should get the result").into_json::<T>()
+    }
+}
+
+impl TrelloManager {
+    pub fn boards(&self) -> Vec<Board> {
         self.get_req::<Vec<Board>>("/1/members/me/boards")
             .expect("get boards")
             .into_iter()
             .filter(|b| !b.closed)
             .collect()
     }
-    fn cards(&self, board_id: &str) -> Vec<Card> {
+    pub fn cards(&self, board_id: &str) -> Vec<Card> {
         self.get_req::<Vec<Card>>(format!("/1/boards/{}/cards", board_id).as_str()).expect("get cards")
     }
-    fn lists(&self, board_id: &str) -> Vec<List> {
+    pub fn lists(&self, board_id: &str) -> Vec<List> {
         self.get_req::<Vec<List>>(format!("/1/boards/{}/lists", board_id).as_str()).expect("get lists")
     }
-    fn create_card(&self, list_id: &str, card_name: &str) -> Card {
+    pub fn create_card(&self, list_id: &str, card_name: &str) -> Card {
         self.post_req::<Card>(format!("/1//cards").as_str(),
                               vec![("pos", "bottom"), ("idList", list_id), ("name", card_name)])
             .expect("create card")
+    }
+    pub fn update_card_name(&self, id: &str, new_name: &str) -> Card {
+        self.put_req::<Card>(format!("/1//cards/{}", id).as_str(), vec![("name", new_name)])
+            .expect("update card")
+    }
+    pub fn update_card_list(&self, card_id: &str, card_list: &str) -> Card {
+        self.put_req::<Card>(format!("/1//cards/{}", card_id).as_str(), vec![("idList", card_list)])
+            .expect("update card list")
     }
 }
 
 
 mod tests {
-    use crate::trello::TrelloManager;
+    use crate::trello::{TrelloManager, TrelloCred};
 
     #[test]
     fn boards_test() {
-        let trello = TrelloManager::new("6ee6c85be50cf98a9d06ff25fdaf6809",
-                                        "9d046d8b9565a78846e49c233b2cd14518a46b454995e915eb9c70f5c2d6c835");
+        let trello = TrelloManager::from_file("/Users/boriszhguchev/projects/trello-vocab-loader/example/trello_token.json");
         let boards = trello.boards();
         println!("{:?}", boards)
     }
 
     #[test]
     fn cards_test() {
-        let trello = TrelloManager::new("6ee6c85be50cf98a9d06ff25fdaf6809",
-                                        "9d046d8b9565a78846e49c233b2cd14518a46b454995e915eb9c70f5c2d6c835");
+        let trello = TrelloManager::from_file("/Users/boriszhguchev/projects/trello-vocab-loader/example/trello_token.json");
         let boards = trello.boards();
         println!("{:?}", boards);
 
@@ -104,8 +137,7 @@ mod tests {
 
     #[test]
     fn lists_test() {
-        let trello = TrelloManager::new("6ee6c85be50cf98a9d06ff25fdaf6809",
-                                        "9d046d8b9565a78846e49c233b2cd14518a46b454995e915eb9c70f5c2d6c835");
+        let trello = TrelloManager::from_file("/Users/boriszhguchev/projects/trello-vocab-loader/example/trello_token.json");
         let boards = trello.boards();
         println!("{:?}", boards);
 
@@ -116,14 +148,18 @@ mod tests {
         }
     }
 
-    #[test]
-    fn create_card_test() {
-        let trello = TrelloManager::new("6ee6c85be50cf98a9d06ff25fdaf6809",
-                                        "9d046d8b9565a78846e49c233b2cd14518a46b454995e915eb9c70f5c2d6c835");
-        let dev_id =
-            trello.boards().into_iter().find(|b| b.name.eq("DEV")).map(|b| b.id).expect("");
 
-        let l_id = trello.lists(dev_id.as_str()).into_iter().find(|l| l.name.eq("Progress")).map(|l| l.id).expect("");
-        trello.create_card(l_id.as_str(),"test2");
+    #[test]
+    fn update_card_test() {
+        let trello = TrelloManager::from_file("/Users/boriszhguchev/projects/trello-vocab-loader/example/trello_token.json");
+        let eng_id =
+            trello.boards().into_iter().find(|b| b.name.eq("ENG")).map(|b| b.id).expect("");
+        let cards = trello.cards(eng_id.as_str());
+        let c = cards.first().unwrap();
+        let lists = trello.lists(&*eng_id);
+        let list = lists.iter().find(|l| l.name == "Queue").unwrap();
+
+        trello.update_card_list(c.id.as_str(), list.id.as_str());
+        println!("card:{}", c.name)
     }
 }
