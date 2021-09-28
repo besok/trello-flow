@@ -4,13 +4,11 @@ pub struct WordMatcher {}
 
 impl WordMatcher {
     pub fn math_words(left: &str, right: &str, prob: f32) -> bool {
-        if left == right { true } else {
-            let mut idx = 1f32;
-            for (l, r) in left.chars().zip(right.chars()) {
-                if l != r { break; } else { idx += 1.0; }
-            }
-            idx / max(left.len(), right.len()) as f32 >= prob
+        let mut idx = 1f32;
+        for (l, r) in left.chars().zip(right.chars()) {
+            if l != r { break; } else { idx += 1.0; }
         }
+        idx / max(left.len(), right.len()) as f32 >= prob
     }
 }
 

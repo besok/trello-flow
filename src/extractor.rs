@@ -32,7 +32,7 @@ impl Extractor {
                 .boards()
                 .iter()
                 .map(|b| {
-                    let lists = self.trello.lists(b.id.as_str());
+                    let lists = self.trello.lists(&b.id);
                     (b.id.to_string(),
                      self.dict.cfg.dicts
                          .iter()
@@ -55,9 +55,7 @@ impl Extractor {
         let bond_col_board: HashMap<&str, &str> = self.col_by_boards();
         let words: HashMap<&str, &str> = self.words_by_col();
         let boards = self.trello.boards();
-        let boards: HashMap<&str, &str> = boards.iter()
-            .map(|b| (b.name.as_str(), b.id.as_str()))
-            .collect();
+        let boards: HashMap<&str, &str> = boards.iter().map(|b| (b.name.as_str(), b.id.as_str())).collect();
         let mut wtargets = vec![];
 
         for (w, col) in words {
@@ -76,9 +74,7 @@ impl Extractor {
     fn words_by_col(&self) -> HashMap<&str, &str> {
         self.dict.data
             .iter()
-            .flat_map(|d| vec![
-                (d.src.as_str(), d.from.as_str()),
-                (d.to.as_str(), d.dst.as_str())])
+            .flat_map(|d| vec![(d.src.as_str(), d.from.as_str()), (d.to.as_str(), d.dst.as_str())])
             .collect()
     }
 }
@@ -97,7 +93,7 @@ impl Extractor {
             self.trello.boards().into_iter().find(|b| b.name == board_name)
                 .map(|b| b.id)
                 .expect(format!("board:{} not found", board_name).as_str());
-        let cards = self.trello.cards(b_id.as_str());
+        let cards = self.trello.cards(&b_id);
         let mut upd_cards = vec![];
         for c in cards.into_iter() {
             let name = c.name;

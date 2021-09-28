@@ -11,7 +11,7 @@ pub struct DictManager {
 }
 
 impl DictManager {
-   pub fn new(cfg_path: &str, data_path: &str) -> DictManager {
+    pub fn new(cfg_path: &str, data_path: &str) -> DictManager {
         let json = read_file_into_string(cfg_path)
             .expect("should be presented");
         let cfg: Configuration = serde_json::from_str::<Configuration>(&json)
@@ -30,10 +30,7 @@ impl DictManager {
             data.push(record)
         }
 
-        DictManager {
-            cfg,
-            data,
-        }
+        DictManager { cfg, data }
     }
 }
 
