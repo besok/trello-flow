@@ -3,7 +3,7 @@ use crate::dict::DictManager;
 use std::iter::Map;
 use std::collections::HashMap;
 
-struct Extractor {
+pub struct Extractor {
     pub trello: TrelloManager,
     pub dict: DictManager,
 }
@@ -26,7 +26,32 @@ pub struct BoardSettings {
 }
 
 impl Extractor {
-    fn match_boards(&self) -> Vec<WordTarget> {
+    pub fn match_board_settings(&self) -> BoardSettingsManager {
+        let boards: HashMap<String, BoardSettings> =
+            self.trello
+                .boards()
+                .iter()
+                .map(|b| {
+                    let lists = self.trello.lists(b.id.as_str());
+                    (b.id.to_string(),
+                     self.dict.cfg.dicts
+                         .iter()
+                         .find(|d| d.board == b.name)
+                         .map(|d| BoardSettings {
+                             new_card_list: lists.iter().find(|l| l.name == d.list_create).map(|l| l.id.to_string()).expect("list for create should be"),
+                             upd_card_list: lists.iter().find(|l| l.name == d.list_move).map(|l| l.id.to_string()).expect("list for update should be"),
+                         }))
+                })
+                .filter(|(id, mb)| mb.is_some())
+                .map(|(id, mb)| (id, mb.unwrap()))
+                .collect();
+
+        BoardSettingsManager {
+            match_f: self.dict.cfg.match_f,
+            boards,
+        }
+    }
+    pub fn match_boards(&self) -> Vec<WordTarget> {
         let bond_col_board: HashMap<&str, &str> = self.col_by_boards();
         let words: HashMap<&str, &str> = self.words_by_col();
         let boards = self.trello.boards();
@@ -45,7 +70,9 @@ impl Extractor {
         }
         wtargets
     }
-
+    fn col_by_boards(&self) -> HashMap<&str, &str> {
+        self.dict.cfg.dicts.iter().map(|d| (d.name.as_str(), d.board.as_str())).collect()
+    }
     fn words_by_col(&self) -> HashMap<&str, &str> {
         self.dict.data
             .iter()
@@ -54,37 +81,15 @@ impl Extractor {
                 (d.to.as_str(), d.dst.as_str())])
             .collect()
     }
-
-    fn col_by_boards(&self) -> HashMap<&str, &str> {
-        self.dict.cfg.dicts.iter().map(|d| (d.name.as_str(), d.board.as_str())).collect()
-    }
-    fn match_board_settings(&self) -> BoardSettingsManager {
-        let boards: HashMap<String, BoardSettings> =
-            self.trello
-                .boards()
-                .iter()
-                .map(|b| {
-                    let lists = self.trello.lists(b.id.as_str());
-                    (b.id.to_string(), self.dict.cfg.dicts.iter()
-                        .find(|d| d.board == b.name)
-                        .map(|d| BoardSettings {
-                            new_card_list: lists.iter().find(|l| l.name == d.list_create).map(|l| l.id.to_string()).expect("list for create should be"),
-                            upd_card_list: lists.iter().find(|l| l.name == d.list_move).map(|l| l.id.to_string()).expect("list for create should be"),
-                        }))
-                })
-                .filter(|(id, mb)| mb.is_some())
-                .map(|(id, mb)| (id, mb.unwrap()))
-                .collect();
-
-        BoardSettingsManager {
-            match_f: self.dict.cfg.match_f,
-            boards,
-        }
-    }
 }
 
 impl Extractor {
-    fn new(trello: TrelloManager, dict: DictManager) -> Self {
+    pub fn new_from(cfg: &str, cred: &str, data: &str) -> Self {
+        let trello = TrelloManager::from_file(cred);
+        let dict = DictManager::new(cfg, data);
+        Extractor { trello, dict }
+    }
+    pub fn new(trello: TrelloManager, dict: DictManager) -> Self {
         Extractor { trello, dict }
     }
     fn clean_up_cards(&self, board_name: &str, start_symbol: char, end_symbol: char) -> Vec<Card> {

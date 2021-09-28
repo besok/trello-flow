@@ -25,6 +25,7 @@ pub struct Board {
 pub struct Card {
     pub id: String,
     pub name: String,
+    pub desc:String
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -108,6 +109,10 @@ impl TrelloManager {
     pub fn update_card_list(&self, card_id: &str, card_list: &str) -> Card {
         self.put_req::<Card>(format!("/1//cards/{}", card_id).as_str(), vec![("idList", card_list)])
             .expect("update card list")
+    }
+    pub fn update_card_dsc(&self, card_id: &str, desc:&str) -> Card {
+        self.put_req::<Card>(format!("/1//cards/{}", card_id).as_str(), vec![("desc", desc)])
+            .expect("update card desc")
     }
 }
 
