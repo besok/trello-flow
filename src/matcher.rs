@@ -3,12 +3,16 @@ use std::cmp::max;
 pub struct WordMatcher {}
 
 impl WordMatcher {
+    fn iterate_with_zip(left: &str, right: &str, prob: f32) -> bool {
+        let mut idx = left.chars().zip(right.chars()).take_while(|(l, r)| { l == r }).count();
+        idx as f32 / right.len() as f32 >= prob
+    }
     pub fn math_words(left: &str, right: &str, prob: f32) -> bool {
-        let mut idx = 1f32;
-        for (l, r) in left.chars().zip(right.chars()) {
-            if l != r { break; } else { idx += 1.0; }
+        if left.len() <= right.len() {
+            WordMatcher::iterate_with_zip(left, right, prob)
+        } else {
+            WordMatcher::iterate_with_zip(right, left, prob)
         }
-        idx / max(left.len(), right.len()) as f32 >= prob
     }
 }
 
@@ -19,6 +23,7 @@ mod tests {
     #[test]
     fn test() {
         assert_eq!(WordMatcher::math_words("fuzzy word", "word", 0.8), false);
-        assert_eq!(WordMatcher::math_words("fuzzy ", "fuzz", 0.8), true);
+        assert_eq!(WordMatcher::math_words("fuzzy", "fuzz", 0.8), true);
+        assert_eq!(WordMatcher::math_words("fuzyz", "fuzz", 0.8), false);
     }
 }
