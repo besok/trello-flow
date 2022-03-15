@@ -122,7 +122,7 @@ mod tests {
     fn match_boards_test() {
         let cred = "/Users/boriszhguchev/projects/trello-vocab-loader/example/trello_token.json";
         let cfg = "/Users/boriszhguchev/projects/trello-vocab-loader/example/cfg.json";
-        let data = "/Users/boriszhguchev/projects/trello-vocab-loader/example/1.csv";
+        let data = "/Users/boriszhguchev/projects/trello-vocab-loader/example/data.csv";
 
 
         let r = Extractor::new(TrelloManager::from_file(cred), DictManager::new(cfg, data));
@@ -136,7 +136,7 @@ mod tests {
     fn match_boards_settings_test() {
         let cred = "/Users/boriszhguchev/projects/trello-vocab-loader/example/trello_token.json";
         let cfg = "/Users/boriszhguchev/projects/trello-vocab-loader/example/cfg.json";
-        let data = "/Users/boriszhguchev/projects/trello-vocab-loader/example/1.csv";
+        let data = "/Users/boriszhguchev/projects/trello-vocab-loader/example/data.csv";
 
 
         let r = Extractor::new(TrelloManager::from_file(cred), DictManager::new(cfg, data));

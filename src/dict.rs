@@ -79,7 +79,7 @@ mod tests {
     fn file_test() {
         let dm = DictManager::new(
             "/Users/boriszhguchev/Documents/cfg.json",
-            "/Users/boriszhguchev/Documents/1.csv");
+            "/Users/boriszhguchev/Documents/data.csv");
         println!("{:?}", dm)
     }
 }
