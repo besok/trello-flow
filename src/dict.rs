@@ -1,8 +1,8 @@
-use std::fs::File;
-use std::io::{Read, Error};
-use serde::{Serialize, Deserialize};
-use std::path::PathBuf;
 use crate::files::read_file_into_string;
+use serde::{Deserialize, Serialize};
+use std::fs::File;
+use std::io::{Error, Read};
+use std::path::PathBuf;
 
 #[derive(Debug)]
 pub struct DictManager {
@@ -12,16 +12,14 @@ pub struct DictManager {
 
 impl DictManager {
     pub fn new(cfg_path: &str, data_path: &str) -> DictManager {
-        let json = read_file_into_string(cfg_path)
-            .expect("should be presented");
-        let cfg: Configuration = serde_json::from_str::<Configuration>(&json)
-            .expect("the cfg should be correct");
+        let json = read_file_into_string(cfg_path).expect("should be presented");
+        let cfg: Configuration =
+            serde_json::from_str::<Configuration>(&json).expect("the cfg should be correct");
 
-
-        let mut reader =
-            csv::ReaderBuilder::new()
-                .has_headers(false)
-                .from_path(PathBuf::from(data_path)).expect("");
+        let mut reader = csv::ReaderBuilder::new()
+            .has_headers(false)
+            .from_path(PathBuf::from(data_path))
+            .expect("");
 
         let mut data: Vec<Record> = vec![];
 
@@ -56,8 +54,9 @@ pub struct Configuration {
     pub match_f: f32,
 }
 
+#[cfg(test)]
 mod tests {
-    use crate::dict::{DictManager, Configuration};
+    use crate::dict::{Configuration, DictManager};
 
     #[test]
     fn cfg_test() {
@@ -79,7 +78,8 @@ mod tests {
     fn file_test() {
         let dm = DictManager::new(
             "/Users/boriszhguchev/Documents/cfg.json",
-            "/Users/boriszhguchev/Documents/data.csv");
+            "/Users/boriszhguchev/Documents/data.csv",
+        );
         println!("{:?}", dm)
     }
 }

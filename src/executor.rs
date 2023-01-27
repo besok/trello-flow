@@ -1,8 +1,8 @@
-use crate::trello::{TrelloManager, Card};
-use crate::extractor::{WordTarget, BoardSettingsManager, Extractor};
-use std::collections::HashMap;
-use crate::matcher::WordMatcher;
 use crate::dict::DictManager;
+use crate::extractor::{BoardSettingsManager, Extractor, WordTarget};
+use crate::matcher::WordMatcher;
+use crate::trello::{Card, TrelloConnector};
+use std::collections::HashMap;
 
 pub struct Executor {}
 
@@ -20,20 +20,32 @@ impl Executor {
         let manager = extractor.match_board_settings();
         let word_targets = extractor.match_boards();
         let boards_ids: Vec<String> = manager.boards.keys().cloned().collect();
-        let words: HashMap<&String, Vec<Card>> =
-            boards_ids.iter().map(|b| (b, extractor.trello.cards(b))).collect();
+        let words: HashMap<&String, Vec<Card>> = boards_ids
+            .iter()
+            .map(|b| (b, extractor.trello.cards(b)))
+            .collect();
         let probe = manager.match_f;
 
         for wt in word_targets.iter() {
             let w = wt.word.as_str();
             if let Some(cards) = words.get(&wt.boards_id) {
                 if let Some(card) = Executor::compare(w, cards, probe) {
-                    let list_id = manager.boards.get(&wt.boards_id).map(|s| &s.upd_card_list).expect("to find upd list");
+                    let list_id = manager
+                        .boards
+                        .get(&wt.boards_id)
+                        .map(|s| &s.upd_card_list)
+                        .expect("to find upd list");
                     extractor.trello.update_card_list(&card.id, list_id);
-                    extractor.trello.update_card_dsc(&card.id, &format!("{}\n- {}", card.desc, w));
+                    extractor
+                        .trello
+                        .update_card_dsc(&card.id, &format!("{}\n- {}", card.desc, w));
                     println!("upd card: {}", w);
                 } else {
-                    let list_id = manager.boards.get(wt.boards_id.as_str()).map(|s| &s.new_card_list).expect("to find new list");
+                    let list_id = manager
+                        .boards
+                        .get(wt.boards_id.as_str())
+                        .map(|s| &s.new_card_list)
+                        .expect("to find new list");
                     extractor.trello.create_card(list_id, w);
                     println!("new card is created: {}", w);
                 }
@@ -43,8 +55,8 @@ impl Executor {
 }
 
 mod tests {
-    use crate::extractor::Extractor;
     use crate::executor::Executor;
+    use crate::extractor::Extractor;
 
     #[test]
     fn simple_test() {
