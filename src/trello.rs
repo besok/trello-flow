@@ -142,9 +142,7 @@ mod tests {
 
     #[test]
     fn boards_test() {
-        let trello = TrelloConnector::from_file(
-            "/home/bzhg/.trello/cred.json",
-        );
+        let trello = TrelloConnector::from_file("/usr/local/share/appdata/cred.json");
         let boards = trello.boards();
         println!("{:?}", boards)
     }
@@ -181,7 +179,7 @@ mod tests {
 
     #[test]
     fn update_card_test() {
-        let trello = TrelloConnector::from_file("/home/bzhg/.trello/cred.json");
+        let trello = TrelloConnector::from_file("~/.trello/cred.json");
         let eng_id = trello
             .boards()
             .into_iter()

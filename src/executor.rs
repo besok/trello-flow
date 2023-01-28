@@ -1,68 +1,58 @@
-use crate::dict::DictManager;
-use crate::extractor::{BoardSettingsManager, Extractor, WordTarget};
-use crate::matcher::WordMatcher;
-use crate::trello::{Card, TrelloConnector};
-use std::collections::HashMap;
+mod settings;
+mod state;
 
-pub struct Executor {}
+use iced::{Application, Command, Theme};
 
-impl Executor {
-    fn compare<'a>(word: &str, cards: &'a Vec<Card>, prob: f32) -> Option<&'a Card> {
-        for c in cards {
-            if WordMatcher::math_words(word, c.name.as_str(), prob) {
-                return Some(c);
-            }
-        }
-        None
-    }
+use crate::trello::TrelloConnector;
 
-    pub fn execute(extractor: Extractor) {
-        let manager = extractor.match_board_settings();
-        let word_targets = extractor.match_boards();
-        let boards_ids: Vec<String> = manager.boards.keys().cloned().collect();
-        let words: HashMap<&String, Vec<Card>> = boards_ids
-            .iter()
-            .map(|b| (b, extractor.trello.cards(b)))
-            .collect();
-        let probe = manager.match_f;
+use self::{settings::Settings, state::State};
 
-        for wt in word_targets.iter() {
-            let w = wt.word.as_str();
-            if let Some(cards) = words.get(&wt.boards_id) {
-                if let Some(card) = Executor::compare(w, cards, probe) {
-                    let list_id = manager
-                        .boards
-                        .get(&wt.boards_id)
-                        .map(|s| &s.upd_card_list)
-                        .expect("to find upd list");
-                    extractor.trello.update_card_list(&card.id, list_id);
-                    extractor
-                        .trello
-                        .update_card_dsc(&card.id, &format!("{}\n- {}", card.desc, w));
-                    println!("upd card: {}", w);
-                } else {
-                    let list_id = manager
-                        .boards
-                        .get(wt.boards_id.as_str())
-                        .map(|s| &s.new_card_list)
-                        .expect("to find new list");
-                    extractor.trello.create_card(list_id, w);
-                    println!("new card is created: {}", w);
-                }
-            }
+pub struct Executor {
+    settings: Settings,
+    connector: TrelloConnector,
+    state: State,
+}
+
+impl Default for Executor {
+    fn default() -> Self {
+        let settings = Settings::default();
+        let connector = TrelloConnector::from_file(settings.credentials_path.as_str());
+        let state = State::default();
+        Self {
+            settings,
+            connector,
+            state,
         }
     }
 }
 
-mod tests {
-    use crate::executor::Executor;
-    use crate::extractor::Extractor;
+#[derive(Debug, Clone)]
+pub enum Message {
+    Init(State),
+}
 
-    #[test]
-    fn simple_test() {
-        let cred = "/Users/boriszhguchev/projects/trello-vocab-loader/example/trello_token.json";
-        let cfg = "/Users/boriszhguchev/projects/trello-vocab-loader/example/cfg.json";
-        let data = "/Users/boriszhguchev/projects/trello-vocab-loader/example/1_test.csv";
-        Executor::execute(Extractor::new_from(cfg, cred, data))
+impl Application for Executor {
+    type Message = Message;
+    type Theme = Theme;
+    type Executor = iced::executor::Default;
+    type Flags = ();
+
+    fn new(flags: Self::Flags) -> (Self, iced::Command<Self::Message>) {
+        (
+            Executor::default(),
+            Command::perform(state::init_state(), Message::Init),
+        )
+    }
+
+    fn title(&self) -> String {
+        format!("Board:{}", self.state.board_name)
+    }
+
+    fn update(&mut self, message: Self::Message) -> iced::Command<Self::Message> {
+        todo!()
+    }
+
+    fn view(&self) -> iced::Element<'_, Self::Message, iced::Renderer<Self::Theme>> {
+        todo!()
     }
 }
