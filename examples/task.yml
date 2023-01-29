@@ -1,0 +1,79 @@
+board: ENG
+
+shuffle_idioms:
+  type: order
+  params:
+    type: shuffle
+    from:
+      type: column # pipe by default and all from can be omitted
+      column: Idioms
+
+take_from_archive:
+  type: take
+  params:
+    from:
+      type: column # pipe by default and all from can be omitted
+      column: archive
+
+filter_demand:
+  type: filter
+  params:
+    by: label
+    rhs: demand
+
+filter_mispronounced:
+  type: filter
+  params:
+    by: label
+    rhs: mispronounced
+
+take_5:
+  type: take
+  params:
+    size: 5
+    place: random
+
+take_10:
+  type: take
+  params:
+    size: 10
+    place: random
+
+move_to_repeat:
+  type: action
+  params:
+    type: move
+    to:
+      column: repeat
+      place: top
+
+repeat_demand:
+  type: flow
+  params:
+    - take_from_archive
+    - filter_demand
+    - take_5
+    - move_to_repeat
+
+repeat_mispronounced:
+  type: flow
+  params:
+    - take_from_archive
+    - filter_mispronounced
+    - take_5
+    - move_to_repeat
+
+repeat_others:
+  type: flow
+  params:
+    - take_from_archive
+    - take_10
+    - move_to_repeat
+
+repeat:
+  type: group
+  params:
+    - repeat_others
+    - repeat_mispronounced
+    - repeat_demand
+    - shuffle_idioms
