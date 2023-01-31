@@ -1,6 +1,13 @@
 pub mod context;
+mod parse;
 
-enum Task {
+#[derive(Debug, Clone, PartialEq)]
+pub struct Task {
+    name: String,
+    body: TaskBody,
+}
+#[derive(Debug, Clone, PartialEq)]
+pub enum TaskBody {
     Take(TakeTask),
     Order(OrderTask),
     Filter(FilterTask),
@@ -9,44 +16,63 @@ enum Task {
     Flow(FlowTask),
 }
 
-struct TakeTask {
+#[derive(Debug, Clone, PartialEq)]
+pub struct TakeTask {
     src: Source,
-    size: usize,
+    size: i64,
     place: Place,
 }
 
-enum Place {
+#[derive(Debug, Clone, PartialEq)]
+pub enum Place {
     Top,
     Bottom,
     Random,
 }
 
-enum Source {
+impl Default for Place {
+    fn default() -> Self {
+        Place::Top
+    }
+}
+#[derive(Debug, Clone, PartialEq)]
+pub struct Target {
+    column: String,
+    place: Place,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Source {
     Pipe,
     Board,
     Column(String),
 }
 
-enum OrderTask {
+#[derive(Debug, Clone, PartialEq)]
+pub enum OrderTask {
     Shuffle(Source),
     Sort(Source),
     Reverse(Source),
 }
 
-enum ActionTask {
+#[derive(Debug, Clone, PartialEq)]
+pub enum ActionTask {
     PrintToConsole,
-    CopyToColumn(String, Place),
-    MoveToColumn(String, Place),
+    CopyToColumn(Target),
+    MoveToColumn(Target),
 }
-
-enum FilterTask {
+#[derive(Debug, Clone, PartialEq)]
+pub enum FilterTask {
     Name(String, bool),
     Label(String, bool),
 }
 
-struct FlowTask {
+#[derive(Debug, Clone, PartialEq)]
+pub struct FlowTask {
     steps: Vec<String>,
 }
-struct GroupTask {
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct GroupTask {
     steps: Vec<String>,
 }

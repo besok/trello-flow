@@ -1,6 +1,5 @@
-use crate::files::{cfg_json_into, read_file_into_string};
+use crate::files::{read_file_into_string, yml_str_to};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use std::borrow::{Borrow, BorrowMut};
 
 pub struct TrelloConnector {
@@ -21,7 +20,7 @@ pub struct Board {
     closed: bool,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Card {
     pub id: String,
     pub name: String,
@@ -37,7 +36,7 @@ pub struct List {
 impl TrelloConnector {
     pub fn from_file(path: &str) -> Self {
         let cred = read_file_into_string(path)
-            .map(|s| cfg_json_into(&s, "cred should have token and key"))
+            .map(|s| yml_str_to(&s, "cred should have token and key"))
             .expect("the cfg file should exist");
 
         TrelloConnector {
@@ -142,7 +141,9 @@ mod tests {
 
     #[test]
     fn boards_test() {
-        let trello = TrelloConnector::from_file("/usr/local/share/appdata/cred.json");
+        let trello = TrelloConnector::from_file(
+            "/home/bzhg/projects/trello-vocab-loader/examples/trello_cred.yml",
+        );
         let boards = trello.boards();
         println!("{:?}", boards)
     }

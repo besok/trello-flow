@@ -1,3 +1,4 @@
+mod err;
 mod files;
 mod task;
 mod trello;

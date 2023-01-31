@@ -27,8 +27,8 @@ task:
   params:
     from:
       type: pipe | board | column # pipe by default and all from can be omitted
-      column: name
-    size: number | all # all by default and size can be omitted
+      source: name
+    size: number | 0 # 0 by default and size can be omitted
     place: top | bottom | random # top by default
 
 task:
@@ -37,7 +37,7 @@ task:
     type: shuffle | sort | reverse
     from:
       type: pipe | column # pipe by default and all from can be omitted
-      column: name
+      source: name
 
 task: 
   type: filter
@@ -52,7 +52,7 @@ task:
     type: copy | move | print
     to: 
       column: name
-      place: top | bottom
+      place: top | bottom | random
 
 task:
   type: group
