@@ -1,11 +1,12 @@
 use std::vec;
 
 use crate::err::{self, FlowError};
-use crate::task::TaskBody;
+
 use yaml_rust::Yaml;
 
-use super::{
+use super::tasks::{
     ActionTask, FilterTask, FlowTask, GroupTask, OrderTask, Place, Source, TakeTask, Target, Task,
+    TaskBody,
 };
 
 impl TryFrom<&Yaml> for Source {
@@ -93,13 +94,13 @@ impl TryFrom<&Yaml> for TaskBody {
             }
             "filter" => {
                 let by = or_default(field_by_name("by", params).and_then(as_string), "name")?;
-                let rhs = field_by_name("by", params).and_then(as_string)?;
+                let rhs = field_by_name("rhs", params).and_then(as_string)?;
                 let case = or_default(
                     field_by_name("case", params).and_then(|cs| match cs.as_bool() {
                         Some(v) => Ok(v),
                         None => Err(FlowError::SerdeError("should be bool".to_string())),
                     }),
-                    false,
+                    true,
                 )?;
                 match by {
                     "name" => Ok(TaskBody::Filter(FilterTask::Name(rhs.to_string(), case))),
@@ -127,7 +128,7 @@ impl TryFrom<&Yaml> for TaskBody {
                 let place = or_default(params.try_into(), Place::Top)?;
                 let size = or_default(
                     field_by_name("size", params).and_then(|e| match e.as_i64() {
-                        Some(v) => Ok(v),
+                        Some(v) => Ok(v as usize),
                         None => error("size should be a number"),
                     }),
                     0,
@@ -190,7 +191,7 @@ mod tests {
 
     use crate::{
         files::yml_str_to,
-        task::{self, ActionTask, FlowTask, GroupTask, Target, TaskBody},
+        task::{self, tasks::*},
     };
 
     fn success<'a, T>(yaml: &'a Yaml, expected: T)
@@ -225,7 +226,7 @@ mod tests {
             ),
             TaskBody::Action(ActionTask::MoveToColumn(Target {
                 column: "repeat".to_string(),
-                place: task::Place::Top,
+                place: Place::Top,
             })),
         );
         success(
@@ -240,7 +241,7 @@ mod tests {
             ),
             TaskBody::Action(ActionTask::MoveToColumn(Target {
                 column: "repeat".to_string(),
-                place: task::Place::Top,
+                place: Place::Top,
             })),
         );
     }

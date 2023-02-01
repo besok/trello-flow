@@ -17,14 +17,16 @@ pub struct TrelloCred {
 pub struct Board {
     pub id: String,
     pub name: String,
-    closed: bool,
+    pub closed: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct Card {
     pub id: String,
     pub name: String,
     pub desc: String,
+    pub id_list: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -106,6 +108,14 @@ impl TrelloConnector {
         self.get_req::<Vec<List>>(format!("/1/boards/{}/lists", board_id).as_str())
             .expect("get lists")
     }
+
+    pub fn list_by_name(&self, board_id: &str, name: &str) -> Option<List> {
+        self.get_req::<Vec<List>>(format!("/1/boards/{}/lists", board_id).as_str())
+            .expect("get lists")
+            .into_iter()
+            .find(|l| l.name == name)
+    }
+
     pub fn create_card(&self, list_id: &str, card_name: &str) -> Card {
         self.post_req::<Card>(
             format!("/1/cards").as_str(),
@@ -151,7 +161,7 @@ mod tests {
     #[test]
     fn cards_test() {
         let trello = TrelloConnector::from_file(
-            "/Users/boriszhguchev/projects/trello-vocab-loader/example/trello_token.json",
+            "/home/bzhg/projects/trello-vocab-loader/examples/trello_cred.yml",
         );
         let boards = trello.boards();
         println!("{:?}", boards);

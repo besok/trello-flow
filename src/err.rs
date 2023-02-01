@@ -4,16 +4,17 @@ use yaml_rust::ScanError;
 
 #[derive(Debug)]
 pub enum FlowError {
-    FileError(Error),
+    EnvError(Error),
     ParseError(ScanError),
     SerdeError(String),
     NoFieldError(String),
     UnexpectedValueError(String),
+    ProcessingError(String),
 }
 
 impl From<Error> for FlowError {
     fn from(value: Error) -> Self {
-        FlowError::FileError(value)
+        FlowError::EnvError(value)
     }
 }
 
