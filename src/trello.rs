@@ -160,6 +160,13 @@ impl TrelloConnector {
         )
         .expect("update card list")
     }
+    pub fn mov_card(&self, card_id: &str, card_list: &str, pos: &str) -> Card {
+        self.put_req::<Card>(
+            format!("/1/cards/{}", card_id).as_str(),
+            vec![("idList", card_list), ("pos", pos)],
+        )
+        .expect("move card to list")
+    }
     pub fn update_card_dsc(&self, card_id: &str, desc: &str) -> Card {
         self.put_req::<Card>(
             format!("/1/cards/{}", card_id).as_str(),

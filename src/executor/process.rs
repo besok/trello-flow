@@ -2,12 +2,20 @@ use super::{error, Executor, State, TaskProcessor};
 use crate::{
     err::FlowError,
     task::tasks::{
-        ActionTask, FilterTask, FlowTask, GroupTask, OrderTask, Place, Source, TakeTask, Task,
-        TaskBody,
+        ActionTask, FilterTask, FlowTask, GroupTask, OrderTask, Place, Source, TakeTask, Target,
+        Task, TaskBody,
     },
+    trello::List,
 };
 use rand::{rngs::ThreadRng, seq::SliceRandom, Rng};
 use std::{collections::HashSet, vec};
+
+fn find_list(executor: &mut Executor, name: &str) -> Result<List, FlowError> {
+    executor
+        .connector
+        .list_by_name(&executor.board_id, &name)
+        .ok_or(error(format!("the column {} is not found", name)))
+}
 
 impl TaskProcessor for TaskBody {
     fn process(&self, executor: &mut Executor, state: State) -> Result<State, FlowError> {
@@ -27,10 +35,7 @@ impl TaskProcessor for Source {
             Source::Pipe => state.cards()?,
             Source::Board => executor.connector.cards(&executor.board_id),
             Source::Column(name) => {
-                let list = executor
-                    .connector
-                    .list_by_name(&executor.board_id, &name)
-                    .ok_or(error(format!("the column {} is not found", name)))?;
+                let list = find_list(executor, name)?;
                 executor.connector.cards_in_list(&list.id)
             }
         };
@@ -40,7 +45,31 @@ impl TaskProcessor for Source {
 
 impl TaskProcessor for ActionTask {
     fn process(&self, executor: &mut Executor, state: State) -> Result<State, FlowError> {
-        Ok(State::End)
+        match self {
+            ActionTask::PrintToConsole => {
+                let cards = state.cards()?;
+                for c in cards.iter() {
+                    println!("card:{:?}", c);
+                }
+                Ok(state)
+            }
+            ActionTask::CopyToColumn(trg) => todo!(),
+            ActionTask::MoveToColumn(Target { column, place }) => {
+                let lid = find_list(executor, &column)?;
+                let cards = state.cards()?;
+                match place {
+                    Place::Top => cards.into_iter().for_each(|c| {
+                        executor.connector.mov_card(&c.id, &lid.id, "top");
+                    }),
+
+                    Place::Bottom => cards.into_iter().for_each(|c| {
+                        executor.connector.mov_card(&c.id, &lid.id, "bottom");
+                    }),
+                    Place::Random => todo!(),
+                }
+                Ok(State::End)
+            }
+        }
     }
 }
 
@@ -270,5 +299,47 @@ mod tests {
             .collect();
 
         println!("{:?}", card_names);
+    }
+
+    #[test]
+    fn action_move() {
+        let ctx = from_str(
+            r#"
+            board: ENG
+            take_from_archive:
+                type: take
+                params:
+                    from:
+                        type: column
+                        source: Archive
+                    size: 10
+                    place: random 
+            shuffle:
+                type: order
+                params:
+                    type: sort
+            
+            move:
+                type: action
+                params:
+                    type: move
+                    to:
+                        column: Repeating
+                        place: top
+            flow:
+                type: flow
+                params:
+                    -  take_from_archive
+                    -  shuffle
+                    -  move              
+        "#,
+            HashMap::new(),
+        )
+        .unwrap();
+
+        let mut e = Executor::new(ctx.clone(), trello(), HashMap::new()).unwrap();
+        let task = ctx.tasks.get("flow").unwrap().clone();
+
+        let res = task.body.process(&mut e, State::Init).unwrap();
     }
 }

@@ -1,4 +1,17 @@
-#### Goal
+#### Description
+
+A framework that enables to automatize some operations.
+It grew from butler and other tools simply because the aforesaid tools did not provide the needed functions.
+For me, as I use it predominantly for learning languages, the pipeline could be the following:
+
+- take 10 random cards from the board ,that have a specific label
+- move them to the specific column
+- shuffle them down
+
+or
+
+- check the cards in column with a name '...'
+- if a card follows a set of conditions then move it to the other column
 
 #### Structure of the files
 
@@ -47,7 +60,7 @@ task:
 task:
   type: action
   params:
-    type: copy | move | print | update
+    type: copy | move | print
     to: 
       column: name
       place: top | bottom | random 
