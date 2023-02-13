@@ -19,8 +19,6 @@ Credential for trello:
   - name | label
 - move | copy to list
 
-### Take
-
 ```yaml
 task:
   type: take
@@ -29,7 +27,7 @@ task:
       type: pipe | board | column # pipe by default and all from can be omitted
       source: name
     size: number | 0 # 0 by default and size can be omitted
-    place: top | bottom | random # top by default
+    place: top | bottom | random  # top by default
 
 task:
   type: order
@@ -49,10 +47,10 @@ task:
 task:
   type: action
   params:
-    type: copy | move | print
+    type: copy | move | print | update
     to: 
       column: name
-      place: top | bottom | random
+      place: top | bottom | random 
 
 task:
   type: group
@@ -67,4 +65,23 @@ task:
     - task1      
     - task2      
     - task3       
+```
+
+### Arguments
+
+The ability to pass some arguments in start like
+
+```bash
+args name=value name=value 
+```
+
+and process in tasks:
+
+```yaml
+filter_demand:
+  type: filter
+  params:
+    by: label
+    rhs: ~~demand~~
+
 ```

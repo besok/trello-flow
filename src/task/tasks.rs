@@ -1,3 +1,5 @@
+use crate::err::FlowError;
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Task {
     pub name: String,
@@ -50,6 +52,14 @@ pub enum OrderTask {
     Shuffle(Source),
     Sort(Source),
     Reverse(Source),
+}
+
+impl OrderTask {
+    pub fn source(&self) -> Result<Source, FlowError> {
+        Ok(match self {
+            OrderTask::Shuffle(s) | OrderTask::Sort(s) | OrderTask::Reverse(s) => s.clone(),
+        })
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

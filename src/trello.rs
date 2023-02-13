@@ -24,13 +24,20 @@ pub struct Board {
 #[serde(rename_all = "camelCase")]
 pub struct Card {
     pub id: String,
+    pub pos: f32,
     pub name: String,
     pub desc: String,
     pub id_list: String,
+    pub id_labels: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct List {
+    pub id: String,
+    pub name: String,
+}
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Label {
     pub id: String,
     pub name: String,
 }
@@ -108,12 +115,28 @@ impl TrelloConnector {
         self.get_req::<Vec<List>>(format!("/1/boards/{}/lists", board_id).as_str())
             .expect("get lists")
     }
-
+    pub fn cards_in_list(&self, list_id: &str) -> Vec<Card> {
+        self.get_req::<Vec<Card>>(format!("/1/lists/{}/cards", list_id).as_str())
+            .expect("get lists")
+    }
+    pub fn labels(&self, board_id: &str) -> Vec<Label> {
+        self.get_req::<Vec<Label>>(format!("/1/boards/{}/labels", board_id).as_str())
+            .expect("get labels")
+    }
     pub fn list_by_name(&self, board_id: &str, name: &str) -> Option<List> {
         self.get_req::<Vec<List>>(format!("/1/boards/{}/lists", board_id).as_str())
             .expect("get lists")
             .into_iter()
             .find(|l| l.name == name)
+    }
+    pub fn label_by_name(&self, board_id: &str, name: &str, case: bool) -> Option<Label> {
+        self.labels(board_id).into_iter().find(|l| {
+            if case {
+                l.name.to_lowercase() == name.to_lowercase()
+            } else {
+                l.name == name
+            }
+        })
     }
 
     pub fn create_card(&self, list_id: &str, card_name: &str) -> Card {
@@ -150,6 +173,18 @@ mod tests {
     use crate::trello::{TrelloConnector, TrelloCred};
 
     #[test]
+    fn labels_test() {
+        let trello = TrelloConnector::from_file(
+            "/home/bzhg/projects/trello-vocab-loader/examples/trello_cred.yml",
+        );
+        let b = trello
+            .boards()
+            .into_iter()
+            .find(|b| b.name == "ENG")
+            .unwrap();
+        println!("{:?}", trello.labels(&b.id));
+    }
+    #[test]
     fn boards_test() {
         let trello = TrelloConnector::from_file(
             "/home/bzhg/projects/trello-vocab-loader/examples/trello_cred.yml",
@@ -170,6 +205,29 @@ mod tests {
             let cards = trello.cards(b.id.as_str());
 
             println!("{:?}", cards);
+        }
+    }
+    #[test]
+    fn cards_list_test() {
+        let trello = TrelloConnector::from_file(
+            "/home/bzhg/projects/trello-vocab-loader/examples/trello_cred.yml",
+        );
+        let boards = trello.boards();
+        println!("{:?}", boards);
+
+        let bid = boards
+            .into_iter()
+            .find(|s| s.name == "ENG".to_string())
+            .unwrap();
+
+        let list = trello
+            .lists(bid.id.as_str())
+            .into_iter()
+            .find(|s| s.name == "Idioms".to_string())
+            .unwrap();
+
+        for b in trello.cards_in_list(&list.id) {
+            println!("{:?}", b);
         }
     }
 

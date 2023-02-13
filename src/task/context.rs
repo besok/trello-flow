@@ -5,12 +5,13 @@ use serde::de::Visitor;
 use serde::{Deserialize, Deserializer};
 use yaml_rust::YamlLoader;
 
-use super::parse::as_string;
+use super::parse::{as_string, ParametrizedYaml};
 use super::tasks::{
     ActionTask, FilterTask, FlowTask, GroupTask, OrderTask, Place, Source, TakeTask, Target, Task,
     TaskBody,
 };
 use crate::err::FlowError;
+use crate::executor::error;
 use crate::files::read_file_into_string;
 use crate::trello::Card;
 
@@ -18,6 +19,15 @@ use crate::trello::Card;
 pub struct TaskContext {
     pub board: String,
     pub tasks: HashMap<String, Task>,
+}
+
+impl TaskContext {
+    pub fn task(&self, name: &str) -> Result<Task, FlowError> {
+        self.tasks
+            .get(name)
+            .map(Clone::clone)
+            .ok_or(error(format!("the task {} does not exist", name)))
+    }
 }
 
 impl Default for TaskContext {
@@ -29,9 +39,8 @@ impl Default for TaskContext {
     }
 }
 
-pub fn from_str(yml: &str) -> Result<TaskContext, FlowError> {
-    let yml_content = read_file_into_string(yml)?;
-    let yamls = YamlLoader::load_from_str(&yml_content)?;
+pub fn from_str(yml: &str, arguments: HashMap<String, String>) -> Result<TaskContext, FlowError> {
+    let yamls = YamlLoader::load_from_str(&yml)?;
 
     let yaml = yamls
         .first()
@@ -42,10 +51,10 @@ pub fn from_str(yml: &str) -> Result<TaskContext, FlowError> {
     let mut board = String::new();
 
     for (k, v) in yaml.into_iter() {
-        match as_string(k)? {
-            "board" => board = as_string(v)?.to_string(),
+        match as_string(ParametrizedYaml::new(k, arguments.clone()))?.as_str() {
+            "board" => board = as_string(ParametrizedYaml::new(v, arguments.clone()))?.to_string(),
             e => {
-                let body: TaskBody = v.try_into()?;
+                let body: TaskBody = ParametrizedYaml::new(v, arguments.clone()).try_into()?;
                 let task = Task {
                     name: e.to_string(),
                     body,
@@ -62,13 +71,19 @@ pub fn from_str(yml: &str) -> Result<TaskContext, FlowError> {
 mod tests {
     use std::collections::HashMap;
 
-    use crate::task::{tasks::*, *};
+    use crate::{
+        files::read_file_into_string,
+        task::{tasks::*, *},
+    };
 
     use super::from_str;
 
     #[test]
     fn test() {
-        let ctx = from_str("/home/bzhg/projects/trello-vocab-loader/examples/task.yml").unwrap();
+        let yml_content =
+            read_file_into_string("/home/bzhg/projects/trello-vocab-loader/examples/task.yml")
+                .unwrap();
+        let ctx = from_str(&yml_content, HashMap::new()).unwrap();
         assert_eq!(ctx.board, "ENG".to_string());
 
         assert_eq!(
