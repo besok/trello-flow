@@ -2,7 +2,7 @@
 
 The simplest workflow:
 - having a csv file from the google translate service
-- having trello boards with english words
+- having trello boards with english words or german words
 - parse the file and grouping the words according to the boards
 - try to find the word on the board 
 and if so then move it into the appropriate list, 
