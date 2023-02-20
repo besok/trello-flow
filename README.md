@@ -1,51 +1,100 @@
-#### Goal
+#### Description
 
-The simplest workflow:
-- having a csv file from the google translate service
-- having trello boards with english words or german words
-- parse the file and grouping the words according to the boards
-- try to find the word on the board 
-and if so then move it into the appropriate list, 
-otherwise create a new one in the appropriate list  
-- the info about bond between boards, list and csv file resides in the config file
+A framework that enables to automatize some operations.
+It grew from butler and other tools simply because the aforesaid tools did not provide the needed functions.
+For me, as I use it predominantly for learning languages, the pipeline could be the following:
 
-#### Example
-```shell
-./trello-vocab-loader --cred ../../example/trello_token.json --cfg ../../example/cfg.json --data ../../example/data.csv
-```
+- take 10 random cards from the board ,that have a specific label
+- move them to the specific column
+- shuffle them down
+
+or
+
+- check the cards in column with a name '...'
+- if a card follows a set of conditions then move it to the other column
 
 #### Structure of the files
+
 Credential for trello:
+
 ```json
 {
   "key": "key to trello api", 
   "token": "token to trello api"
 }
 ```
-Configuration:
-- match_f: the factor affects how to coincide the word should be with the existing one.
-- name: the value of the column in data.csv file
-- board: the name of the board that respects to the column
-- list_create: the name of the trello list in case if the new word needs to be created
-- list_move: the name of the trello list in case if the word has a candidate to update and that word needs to move to the column
-```json
-{
-  "dicts": [
-    {
-      "name": "German",
-      "board": "GER",
-      "list_create": "Later",
-      "list_move": "Daily"
-    }
-  ],
-  "match_f": 0.8
-}
+
+## Tasks
+
+- take `number | all` from `column | board` where `top | bottom | random`
+- shuffle | sort them
+- filter them by
+  - name | label
+- move | copy to list
+
+```yaml
+task:
+  type: take
+  params:
+    from:
+      type: pipe | board | column # pipe by default and all from can be omitted
+      source: name
+    size: number | 0 # 0 by default and size can be omitted
+    place: top | bottom | random  # top by default
+
+task:
+  type: order
+  params:
+    type: shuffle | sort | reverse
+    from:
+      type: pipe | column # pipe by default and all from can be omitted
+      source: name
+
+task: 
+  type: filter
+  params:
+    by: name | label # name by default
+    rhs: name
+    case: false # by default  
+
+task:
+  type: action
+  params:
+    type: copy | move | print
+    to: 
+      column: name
+      place: top | bottom | random 
+
+task:
+  type: group
+  params:
+    - task1      
+    - task2      
+    - task3
+
+task:
+  type: flow
+  params:
+    - task1      
+    - task2      
+    - task3       
 ```
-Data.csv:
-- first column corresponds to the third one and the second one corresponds to the forth one respectively
-```csv
-English,Russian,sober,трезвый
-English,Russian,tentative,пробный
-English,Russian,snag,загвоздка
-English,Russian,purge,удалять
+
+### Arguments
+
+The ability to pass some arguments in start like
+
+```bash
+args name=value name=value 
+```
+
+and process in tasks:
+
+```yaml
+filter_demand:
+  type: filter
+  params:
+    by: label
+    rhs: ~~demand~~
+
 ```

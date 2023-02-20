@@ -1,68 +1,84 @@
-use crate::dict::DictManager;
-use crate::extractor::{BoardSettingsManager, Extractor, WordTarget};
-use crate::matcher::WordMatcher;
-use crate::trello::{Card, TrelloConnector};
+mod process;
+
 use std::collections::HashMap;
 
-pub struct Executor {}
+use crate::{
+    err::FlowError,
+    task::{context::TaskContext, *},
+    trello::{self, *},
+};
+use rand::{rngs::ThreadRng, Rng};
+
+struct Executor {
+    board_id: String,
+    args: HashMap<String, String>,
+    ctx: TaskContext,
+    connector: TrelloConnector,
+    rand: ThreadRng,
+}
 
 impl Executor {
-    fn compare<'a>(word: &str, cards: &'a Vec<Card>, prob: f32) -> Option<&'a Card> {
-        for c in cards {
-            if WordMatcher::math_words(word, c.name.as_str(), prob) {
-                return Some(c);
-            }
+    // fn execute(&mut self, task: String) -> Result<State, FlowError> {}
+
+    fn new(
+        ctx: TaskContext,
+        connector: TrelloConnector,
+        args: HashMap<String, String>,
+    ) -> Result<Executor, FlowError> {
+        let board_name = ctx.board.clone();
+        let board = connector
+            .boards()
+            .into_iter()
+            .find(|x| x.name == board_name)
+            .ok_or(error("board is not found".to_string()));
+
+        Ok(Self {
+            ctx,
+            board_id: board?.id,
+            args,
+            rand: rand::thread_rng(),
+            connector,
+        })
+    }
+    fn start(&mut self, task: String) -> Result<State, FlowError> {
+        let task = self
+            .ctx
+            .tasks
+            .get(&task)
+            .map(Clone::clone)
+            .ok_or(error(format!("a task {} is not found", task)))?;
+        task.body.process(self, State::Init)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum State {
+    Pipe(Vec<Card>),
+    Init,
+    End,
+}
+
+pub fn error(mes: String) -> FlowError {
+    FlowError::ProcessingError(mes)
+}
+
+impl State {
+    pub fn cards(&self) -> Result<Vec<Card>, FlowError> {
+        match self {
+            State::Pipe(elems) => Ok(elems.clone()),
+            _ => Err(FlowError::ProcessingError("no pipe results".to_string())),
         }
-        None
     }
 
-    pub fn execute(extractor: Extractor) {
-        let manager = extractor.match_board_settings();
-        let word_targets = extractor.match_boards();
-        let boards_ids: Vec<String> = manager.boards.keys().cloned().collect();
-        let words: HashMap<&String, Vec<Card>> = boards_ids
-            .iter()
-            .map(|b| (b, extractor.trello.cards(b)))
-            .collect();
-        let probe = manager.match_f;
-
-        for wt in word_targets.iter() {
-            let w = wt.word.as_str();
-            if let Some(cards) = words.get(&wt.boards_id) {
-                if let Some(card) = Executor::compare(w, cards, probe) {
-                    let list_id = manager
-                        .boards
-                        .get(&wt.boards_id)
-                        .map(|s| &s.upd_card_list)
-                        .expect("to find upd list");
-                    extractor.trello.update_card_list(&card.id, list_id);
-                    extractor
-                        .trello
-                        .update_card_dsc(&card.id, &format!("{}\n- {}", card.desc, w));
-                    println!("upd card: {}", w);
-                } else {
-                    let list_id = manager
-                        .boards
-                        .get(wt.boards_id.as_str())
-                        .map(|s| &s.new_card_list)
-                        .expect("to find new list");
-                    extractor.trello.create_card(list_id, w);
-                    println!("new card is created: {}", w);
-                }
-            }
+    pub fn upd_cards(&self, cards: Vec<Card>) -> State {
+        match self {
+            State::Pipe(elems) => State::Pipe(cards),
+            State::Init => State::Pipe(cards),
+            State::End => State::Pipe(cards),
         }
     }
 }
 
-mod tests {
-    use crate::executor::Executor;
-    use crate::extractor::Extractor;
-
-    #[test]
-    fn simple_test() {
-        let cred = "/Users/boriszhguchev/projects/trello-vocab-loader/example/trello_token.json";
-        let cfg = "/Users/boriszhguchev/projects/trello-vocab-loader/example/cfg.json";
-        let data = "/Users/boriszhguchev/projects/trello-vocab-loader/example/1_test.csv";
-        Executor::execute(Extractor::new_from(cfg, cred, data))
-    }
+trait TaskProcessor {
+    fn process(&self, executor: &mut Executor, state: State) -> Result<State, FlowError>;
 }
