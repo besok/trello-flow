@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt::format;
 use std::io::{Error, Read};
 
 use serde::de::Visitor;
@@ -41,11 +42,13 @@ impl Default for TaskContext {
 
 pub fn from_str(yml: &str, arguments: HashMap<String, String>) -> Result<TaskContext, FlowError> {
     let yamls = YamlLoader::load_from_str(&yml)?;
-
     let yaml = yamls
         .first()
         .and_then(|s| s.as_hash())
-        .ok_or(FlowError::SerdeError("the doc is empty".to_string()))?;
+        .ok_or(FlowError::SerdeError(format!(
+            "the yaml with tasks seems to be absent in {}",
+            yml,
+        )))?;
 
     let mut tasks: HashMap<String, Task> = HashMap::new();
     let mut board = String::new();

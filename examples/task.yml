@@ -1,5 +1,25 @@
 board: ENG
 
+take_from_repeating:
+  type: take
+  params:
+    from:
+      type: column # pipe by default and all from can be omitted
+      source: Repeating
+
+move_to_archive:
+  type: action
+  params:
+    type: move
+    to:
+      column: Archive
+
+clean_repeating:
+  type: flow
+  params:
+    - take_from_repeating
+    - move_to_archive
+
 shuffle_idioms:
   type: order
   params:
@@ -13,19 +33,19 @@ take_from_archive:
   params:
     from:
       type: column # pipe by default and all from can be omitted
-      source: archive
+      source: Archive
 
 filter_demand:
   type: filter
   params:
     by: label
-    rhs: demand
+    rhs: Demand
 
 filter_mispronounced:
   type: filter
   params:
     by: label
-    rhs: mispronounced
+    rhs: Mispronounced
 
 take_5:
   type: take
@@ -44,8 +64,13 @@ move_to_repeat:
   params:
     type: move
     to:
-      column: repeat
+      column: Repeating
       place: top
+
+print:
+  type: action
+  params:
+    type: print
 
 repeat_demand:
   type: flow
@@ -77,3 +102,10 @@ repeat:
     - repeat_mispronounced
     - repeat_demand
     - shuffle_idioms
+
+print_tasks:
+  type: flow
+  params: 
+    - take_from_repeating
+    - take_5
+    - print

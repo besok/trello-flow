@@ -4,12 +4,24 @@ use std::collections::HashMap;
 
 use crate::{
     err::FlowError,
+    files::read_file_into_string,
     task::{context::TaskContext, *},
     trello::{self, *},
 };
 use rand::{rngs::ThreadRng, Rng};
 
-struct Executor {
+#[derive(Clone, Debug)]
+pub struct ConfigurationFiles {
+    pub trello_cred: String,
+    pub tasks: String,
+}
+impl ConfigurationFiles {
+    pub fn new(trello_cred: String, tasks: String) -> Result<ConfigurationFiles, FlowError> {
+        Ok(Self { trello_cred, tasks })
+    }
+}
+
+pub struct Executor {
     board_id: String,
     args: HashMap<String, String>,
     ctx: TaskContext,
@@ -18,7 +30,25 @@ struct Executor {
 }
 
 impl Executor {
-    // fn execute(&mut self, task: String) -> Result<State, FlowError> {}
+    pub fn tasks(&self) -> Vec<String> {
+        self.ctx.tasks.keys().map(Clone::clone).collect()
+    }
+
+    pub fn from(
+        cfg: ConfigurationFiles,
+        arguments: HashMap<String, String>,
+    ) -> Result<Executor, FlowError> {
+        Executor::from_files(cfg.trello_cred.as_str(), cfg.tasks.as_str(), arguments)
+    }
+    pub fn from_files(
+        cred_file: &str,
+        yml_file: &str,
+        arguments: HashMap<String, String>,
+    ) -> Result<Executor, FlowError> {
+        let ctx = context::from_str(read_file_into_string(yml_file)?.as_str(), arguments.clone())?;
+        let connector = TrelloConnector::from_file(cred_file)?;
+        Executor::new(ctx, connector, arguments)
+    }
 
     fn new(
         ctx: TaskContext,
@@ -40,13 +70,15 @@ impl Executor {
             connector,
         })
     }
-    fn start(&mut self, task: String) -> Result<State, FlowError> {
+    pub fn start(&mut self, task: String) -> Result<State, FlowError> {
         let task = self
             .ctx
             .tasks
             .get(&task)
             .map(Clone::clone)
             .ok_or(error(format!("a task {} is not found", task)))?;
+
+        info!("the executor starts a task: {:?}", task);
         task.body.process(self, State::Init)
     }
 }
@@ -56,6 +88,19 @@ pub enum State {
     Pipe(Vec<Card>),
     Init,
     End,
+}
+
+impl ToString for State {
+    fn to_string(&self) -> String {
+        match self {
+            State::Pipe(e) => {
+                let c_names: Vec<String> = e.into_iter().map(|c| c.name.clone()).collect();
+                c_names.join("\n")
+            }
+            State::Init => "init".to_string(),
+            State::End => "end".to_string(),
+        }
+    }
 }
 
 pub fn error(mes: String) -> FlowError {
@@ -81,4 +126,21 @@ impl State {
 
 trait TaskProcessor {
     fn process(&self, executor: &mut Executor, state: State) -> Result<State, FlowError>;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Executor;
+
+    #[test]
+    fn base_test() {
+        let mut e = Executor::from_files(
+            "/home/besok/projects/trello-flow/examples/trello_cred.yml",
+            "/home/besok/projects/trello-flow/examples/task.yml",
+            Default::default(),
+        )
+        .unwrap();
+
+        let r = e.start("repeat".to_string()).unwrap();
+    }
 }

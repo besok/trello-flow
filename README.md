@@ -13,6 +13,16 @@ or
 - check the cards in column with a name '...'
 - if a card follows a set of conditions then move it to the other column
 
+### Todos
+
+- random for action(move)
+- extra fields for action(copy)
+- add a telegram bot
+
+### Thoughts
+
+move cards to archive?
+
 #### Structure of the files
 
 Credential for trello:
@@ -26,7 +36,7 @@ Credential for trello:
 
 ## Tasks
 
-- take `number | all` from `column | board` where `top | bottom | random`
+- take `number | 0` from `column | board` where `top | bottom | random`
 - shuffle | sort them
 - filter them by
   - name | label

@@ -180,8 +180,8 @@ pub fn field_by_name<'a>(
 
 fn par_yaml<'a, R, SR, YR>(
     v: ParametrizedYaml<'a>,
-    fromStr: SR,
-    fromYaml: YR,
+    from_str: SR,
+    from_yaml: YR,
 ) -> Result<R, FlowError>
 where
     SR: Fn(&str) -> Result<R, FlowError>,
@@ -193,9 +193,9 @@ where
             let key = format!("~~{}~~", k);
             unfolded_str = unfolded_str.replace(&key, &v);
         }
-        fromStr(&unfolded_str)
+        from_str(&unfolded_str)
     } else {
-        fromYaml(v.yaml)
+        from_yaml(v.yaml)
     }
 }
 

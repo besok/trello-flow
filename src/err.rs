@@ -23,3 +23,13 @@ impl From<ScanError> for FlowError {
         FlowError::ParseError(value)
     }
 }
+impl From<serde_yaml::Error> for FlowError {
+    fn from(value: serde_yaml::Error) -> Self {
+        FlowError::SerdeError(
+            value
+                .location()
+                .map(|l| format!("error in {}", l.index()))
+                .unwrap_or("error in serde".to_string()),
+        )
+    }
+}

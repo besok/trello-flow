@@ -13,3 +13,7 @@ clap = "4.1.4"
 csv = "1.1"
 yaml-rust = "0.4"
 rand = "0.8.5"
+teloxide = { version = "0.12", features = ["macros"] }
+tokio = { version = "1.8", features = ["rt-multi-thread", "macros"] }
+log = "0.4"
+env_logger = "0.10.0"

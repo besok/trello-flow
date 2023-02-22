@@ -5,7 +5,7 @@ use crate::{
         ActionTask, FilterTask, FlowTask, GroupTask, OrderTask, Place, Source, TakeTask, Target,
         Task, TaskBody,
     },
-    trello::List,
+    trello::{Card, List},
 };
 use rand::{rngs::ThreadRng, seq::SliceRandom, Rng};
 use std::{collections::HashSet, vec};
@@ -47,16 +47,33 @@ impl TaskProcessor for ActionTask {
     fn process(&self, executor: &mut Executor, state: State) -> Result<State, FlowError> {
         match self {
             ActionTask::PrintToConsole => {
+                info!("print...");
                 let cards = state.cards()?;
                 for c in cards.iter() {
-                    println!("card:{:?}", c);
+                    info!("card:{:?}", c);
                 }
                 Ok(state)
             }
-            ActionTask::CopyToColumn(trg) => todo!(),
+            ActionTask::CopyToColumn(Target { column, place }) => {
+                let lid = find_list(executor, &column)?.id;
+                let cards: Vec<Card> = state.cards()?;
+                info!("copy to {}", column);
+                match place {
+                    Place::Top => cards.into_iter().for_each(|c| {
+                        executor.connector.create_card(&lid, &c.name, "top");
+                    }),
+
+                    Place::Bottom => cards.into_iter().for_each(|c| {
+                        executor.connector.create_card(&lid, &c.name, "bottom");
+                    }),
+                    Place::Random => todo!(),
+                }
+                Ok(State::End)
+            }
             ActionTask::MoveToColumn(Target { column, place }) => {
                 let lid = find_list(executor, &column)?;
                 let cards = state.cards()?;
+                info!("move to {}", column);
                 match place {
                     Place::Top => cards.into_iter().for_each(|c| {
                         executor.connector.mov_card(&c.id, &lid.id, "top");
@@ -75,7 +92,9 @@ impl TaskProcessor for ActionTask {
 
 impl TaskProcessor for GroupTask {
     fn process(&self, executor: &mut Executor, state: State) -> Result<State, FlowError> {
+        info!("execute a group task:");
         for step in &self.steps {
+            info!("execute a step: {}", step);
             let _ = executor.start(step.clone())?;
         }
         Ok(State::End)
@@ -86,6 +105,10 @@ impl TaskProcessor for TakeTask {
     fn process(&self, executor: &mut Executor, state: State) -> Result<State, FlowError> {
         let entities = self.src.process(executor, state)?.cards()?;
         let max = entities.len();
+        info!(
+            "taken cards from {:?} and then will cut by {}",
+            self.src, max
+        );
         match self.size {
             i if i > 0 && i < max => match self.place {
                 Place::Top => Ok(State::Pipe(entities[..i].to_vec())),
@@ -112,6 +135,7 @@ impl TaskProcessor for TakeTask {
 impl TaskProcessor for FilterTask {
     fn process(&self, executor: &mut Executor, state: State) -> Result<State, FlowError> {
         let cards = state.cards()?;
+        info!("filter by {:?}", self);
         match self {
             FilterTask::Name(name, case) => Ok(State::Pipe(
                 cards
@@ -145,6 +169,7 @@ impl TaskProcessor for FilterTask {
 impl TaskProcessor for OrderTask {
     fn process(&self, executor: &mut Executor, state: State) -> Result<State, FlowError> {
         let mut items = self.source()?.process(executor, state)?.cards()?;
+        info!("order items by {:?} ", self);
         let mut items = match self {
             OrderTask::Shuffle(_s) => {
                 items.shuffle(&mut executor.rand);
@@ -165,10 +190,11 @@ impl TaskProcessor for OrderTask {
 
 impl TaskProcessor for FlowTask {
     fn process(&self, executor: &mut Executor, state: State) -> Result<State, FlowError> {
+        info!("flow task:");
+
         self.steps.iter().fold(Ok(state), |st, step| {
-            let state = st?;
-            let task = executor.ctx.task(step)?;
-            task.body.process(executor, state)
+            info!("execute step: {}", step);
+            executor.ctx.task(step)?.body.process(executor, st?)
         })
     }
 }
@@ -187,9 +213,8 @@ mod tests {
     };
 
     fn trello() -> TrelloConnector {
-        TrelloConnector::from_file(
-            "/home/bzhg/projects/trello-vocab-loader/examples/trello_cred.yml",
-        )
+        TrelloConnector::from_file("/home/besok/projects/trello-flow/examples/trello_cred.yml")
+            .unwrap()
     }
     // #[test]
     // fn filter() {
@@ -323,6 +348,47 @@ mod tests {
                 type: action
                 params:
                     type: move
+                    to:
+                        column: Repeating
+                        place: top
+            flow:
+                type: flow
+                params:
+                    -  take_from_archive
+                    -  shuffle
+                    -  move              
+        "#,
+            HashMap::new(),
+        )
+        .unwrap();
+
+        let mut e = Executor::new(ctx.clone(), trello(), HashMap::new()).unwrap();
+        let task = ctx.tasks.get("flow").unwrap().clone();
+
+        let res = task.body.process(&mut e, State::Init).unwrap();
+    }
+    #[test]
+    fn action_copy() {
+        let ctx = from_str(
+            r#"
+            board: ENG
+            take_from_archive:
+                type: take
+                params:
+                    from:
+                        type: column
+                        source: Archive
+                    size: 10
+                    place: random 
+            shuffle:
+                type: order
+                params:
+                    type: sort
+            
+            move:
+                type: action
+                params:
+                    type: copy
                     to:
                         column: Repeating
                         place: top

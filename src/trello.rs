@@ -1,13 +1,17 @@
-use crate::files::{read_file_into_string, yml_str_to};
+use crate::{
+    err::FlowError,
+    files::{read_file_into_string, yml_str_to},
+};
 use serde::{Deserialize, Serialize};
 use std::borrow::{Borrow, BorrowMut};
 
+#[derive(Clone, Debug)]
 pub struct TrelloConnector {
     prefix: &'static str,
     cred: TrelloCred,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TrelloCred {
     key: String,
     token: String,
@@ -43,15 +47,11 @@ pub struct Label {
 }
 
 impl TrelloConnector {
-    pub fn from_file(path: &str) -> Self {
-        let cred = read_file_into_string(path)
-            .map(|s| yml_str_to(&s, "cred should have token and key"))
-            .expect("the cfg file should exist");
-
-        TrelloConnector {
+    pub fn from_file(path: &str) -> Result<TrelloConnector, FlowError> {
+        Ok(TrelloConnector {
             prefix: "https://api.trello.com",
-            cred,
-        }
+            cred: yml_str_to(read_file_into_string(path)?.as_str())?,
+        })
     }
 }
 
@@ -139,10 +139,10 @@ impl TrelloConnector {
         })
     }
 
-    pub fn create_card(&self, list_id: &str, card_name: &str) -> Card {
+    pub fn create_card(&self, list_id: &str, card_name: &str, pos: &str) -> Card {
         self.post_req::<Card>(
             format!("/1/cards").as_str(),
-            vec![("pos", "bottom"), ("idList", list_id), ("name", card_name)],
+            vec![("pos", pos), ("idList", list_id), ("name", card_name)],
         )
         .expect("create card")
     }
@@ -183,7 +183,8 @@ mod tests {
     fn labels_test() {
         let trello = TrelloConnector::from_file(
             "/home/bzhg/projects/trello-vocab-loader/examples/trello_cred.yml",
-        );
+        )
+        .unwrap();
         let b = trello
             .boards()
             .into_iter()
@@ -195,7 +196,8 @@ mod tests {
     fn boards_test() {
         let trello = TrelloConnector::from_file(
             "/home/bzhg/projects/trello-vocab-loader/examples/trello_cred.yml",
-        );
+        )
+        .unwrap();
         let boards = trello.boards();
         println!("{:?}", boards)
     }
@@ -204,7 +206,8 @@ mod tests {
     fn cards_test() {
         let trello = TrelloConnector::from_file(
             "/home/bzhg/projects/trello-vocab-loader/examples/trello_cred.yml",
-        );
+        )
+        .unwrap();
         let boards = trello.boards();
         println!("{:?}", boards);
 
@@ -218,7 +221,8 @@ mod tests {
     fn cards_list_test() {
         let trello = TrelloConnector::from_file(
             "/home/bzhg/projects/trello-vocab-loader/examples/trello_cred.yml",
-        );
+        )
+        .unwrap();
         let boards = trello.boards();
         println!("{:?}", boards);
 
@@ -242,7 +246,8 @@ mod tests {
     fn lists_test() {
         let trello = TrelloConnector::from_file(
             "/Users/boriszhguchev/projects/trello-vocab-loader/example/trello_token.json",
-        );
+        )
+        .unwrap();
         let boards = trello.boards();
         println!("{:?}", boards);
 
@@ -255,7 +260,7 @@ mod tests {
 
     #[test]
     fn update_card_test() {
-        let trello = TrelloConnector::from_file("~/.trello/cred.json");
+        let trello = TrelloConnector::from_file("~/.trello/cred.json").unwrap();
         let eng_id = trello
             .boards()
             .into_iter()
