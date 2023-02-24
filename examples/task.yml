@@ -1,24 +1,52 @@
 board: ENG
 
-take_from_repeating:
+new:
+  type: action
+  params: 
+    type: add
+    to:
+      column: Later
+    name: ~~name~~  
+
+_take_from_board:
+  type: take
+  params: 
+    from:
+      type: board
+      source: ENG
+      
+_filter_by_name:
+  type: filter
+  params:
+    by: name
+    rhs: ~~name~~
+    case: false  
+find:
+  type: flow
+  params:
+    - _take_from_board
+    - _filter_by_name
+    - _print
+
+_take_from_repeating:
   type: take
   params:
     from:
       type: column # pipe by default and all from can be omitted
       source: Repeating
 
-move_to_archive:
+_move_to_archive:
   type: action
   params:
     type: move
     to:
       column: Archive
 
-clean_repeating:
+clean_rep:
   type: flow
   params:
-    - take_from_repeating
-    - move_to_archive
+    - _take_from_repeating
+    - _move_to_archive
 
 shuffle_idioms:
   type: order
@@ -28,38 +56,38 @@ shuffle_idioms:
       type: column # pipe by default and all from can be omitted
       source: Idioms
 
-take_from_archive:
+_take_from_archive:
   type: take
   params:
     from:
       type: column # pipe by default and all from can be omitted
       source: Archive
 
-filter_demand:
+_filter_demand:
   type: filter
   params:
     by: label
     rhs: Demand
 
-filter_mispronounced:
+_filter_mispronounced:
   type: filter
   params:
     by: label
     rhs: Mispronounced
 
-take_5:
+_take_5:
   type: take
   params:
     size: 5
     place: random
 
-take_10:
+_take_10:
   type: take
   params:
     size: 10
     place: random
 
-move_to_repeat:
+_move_to_repeat:
   type: action
   params:
     type: move
@@ -67,45 +95,45 @@ move_to_repeat:
       column: Repeating
       place: top
 
-print:
+_print:
   type: action
   params:
     type: print
 
-repeat_demand:
+_repeat_demand:
   type: flow
   params:
-    - take_from_archive
-    - filter_demand
-    - take_5
-    - move_to_repeat
+    - _take_from_archive
+    - _filter_demand
+    - _take_5
+    - _move_to_repeat
 
-repeat_mispronounced:
+_repeat_mispronounced:
   type: flow
   params:
-    - take_from_archive
-    - filter_mispronounced
-    - take_5
-    - move_to_repeat
+    - _take_from_archive
+    - _filter_mispronounced
+    - _take_5
+    - _move_to_repeat
 
-repeat_others:
+_repeat_others:
   type: flow
   params:
-    - take_from_archive
-    - take_10
-    - move_to_repeat
+    - _take_from_archive
+    - _take_10
+    - _move_to_repeat
 
 repeat:
   type: group
   params:
-    - repeat_others
-    - repeat_mispronounced
-    - repeat_demand
+    - _repeat_others
+    - _repeat_mispronounced
+    - _repeat_demand
     - shuffle_idioms
 
 print_tasks:
   type: flow
   params: 
-    - take_from_repeating
-    - take_5
-    - print
+    - _take_from_repeating
+    - _take_5
+    - _print

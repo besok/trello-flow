@@ -2,8 +2,8 @@ use super::{error, Executor, State, TaskProcessor};
 use crate::{
     err::FlowError,
     task::tasks::{
-        ActionTask, FilterTask, FlowTask, GroupTask, OrderTask, Place, Source, TakeTask, Target,
-        Task, TaskBody,
+        ActionTask, CardInfo, FilterTask, FlowTask, GroupTask, OrderTask, Place, Source, TakeTask,
+        Target, Task, TaskBody,
     },
     trello::{Card, List},
 };
@@ -31,6 +31,7 @@ impl TaskProcessor for TaskBody {
 }
 impl TaskProcessor for Source {
     fn process(&self, executor: &mut Executor, state: State) -> Result<State, FlowError> {
+        info!("process source {:?}", self);
         let items = match &self {
             Source::Pipe => state.cards()?,
             Source::Board => executor.connector.cards(&executor.board_id),
@@ -39,6 +40,7 @@ impl TaskProcessor for Source {
                 executor.connector.cards_in_list(&list.id)
             }
         };
+        info!("taken {:?} cards", items.len());
         Ok(State::Pipe(items))
     }
 }
@@ -84,6 +86,16 @@ impl TaskProcessor for ActionTask {
                     }),
                     Place::Random => todo!(),
                 }
+                Ok(State::End)
+            }
+            ActionTask::AddToColumn(CardInfo { name }, Target { column, place }) => {
+                let lid = find_list(executor, &column)?;
+                info!("add a card to {}", column);
+                match place {
+                    Place::Top => executor.connector.create_card(&lid.id, name, "top"),
+                    Place::Bottom => executor.connector.create_card(&lid.id, name, "bottom"),
+                    Place::Random => todo!(),
+                };
                 Ok(State::End)
             }
         }

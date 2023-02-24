@@ -33,6 +33,8 @@ pub struct Card {
     pub desc: String,
     pub id_list: String,
     pub id_labels: Vec<String>,
+    pub url: String,
+    pub short_url: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -68,6 +70,19 @@ impl TrelloConnector {
             .expect("should get the result")
             .into_json::<T>()
     }
+    fn get_params_req<T>(&self, url: &str, params: Vec<(&str, &str)>) -> std::io::Result<T>
+    where
+        T: for<'de> Deserialize<'de>,
+    {
+        let mut r = ureq::get(format!("{}{}", self.prefix, url).as_str())
+            .query("key", self.cred.key.as_str())
+            .query("token", self.cred.token.as_str())
+            .set("Accept", "application/json");
+        for (k, v) in params.into_iter() {
+            r = r.query(k, v);
+        }
+        r.call().expect("should get the result").into_json::<T>()
+    }
     fn post_req<T>(&self, url: &str, params: Vec<(&str, &str)>) -> std::io::Result<T>
     where
         T: for<'de> Deserialize<'de>,
@@ -100,6 +115,25 @@ impl TrelloConnector {
 }
 
 impl TrelloConnector {
+    pub fn search_cards_manually(&self, board_id: &str, card_name: &str) -> Vec<Card> {
+        self.cards(board_id)
+            .into_iter()
+            .filter(|v| v.name.to_lowercase() == card_name.to_lowercase())
+            .collect()
+    }
+
+    // pub fn find_cards(&self, board_id: &str, query: &str) -> Vec<Card> {
+    //     self.get_params_req::<Vec<Card>>(
+    //         "/1/search",
+    //         vec![
+    //             ("query", query),
+    //             ("idBoards", board_id),
+    //             ("modelTypes", "cards"),
+    //         ],
+    //     )
+    //     .expect("list of cards")
+    // }
+
     pub fn boards(&self) -> Vec<Board> {
         self.get_req::<Vec<Board>>("/1/members/me/boards")
             .expect("get boards")
@@ -181,10 +215,9 @@ mod tests {
 
     #[test]
     fn labels_test() {
-        let trello = TrelloConnector::from_file(
-            "/home/bzhg/projects/trello-vocab-loader/examples/trello_cred.yml",
-        )
-        .unwrap();
+        let trello =
+            TrelloConnector::from_file("/home/besok/projects/trello-flow/examples/trello_cred.yml")
+                .unwrap();
         let b = trello
             .boards()
             .into_iter()
@@ -192,6 +225,20 @@ mod tests {
             .unwrap();
         println!("{:?}", trello.labels(&b.id));
     }
+
+    #[test]
+    fn card_search() {
+        let trello =
+            TrelloConnector::from_file("/home/besok/projects/trello-flow/examples/trello_cred.yml")
+                .unwrap();
+        let b = trello
+            .boards()
+            .into_iter()
+            .find(|b| b.name == "ENG")
+            .unwrap();
+        println!("{:?}", trello.search_cards_manually(&b.id, "collapse"));
+    }
+
     #[test]
     fn boards_test() {
         let trello = TrelloConnector::from_file(

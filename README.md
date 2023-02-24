@@ -17,7 +17,7 @@ or
 
 - random for action(move)
 - extra fields for action(copy)
-- add a telegram bot
+- add a separation for tasks by boards
 
 ### Thoughts
 
@@ -40,7 +40,7 @@ Credential for trello:
 - shuffle | sort them
 - filter them by
   - name | label
-- move | copy to list
+- move | copy to list | add
 
 ```yaml
 task:
@@ -70,10 +70,11 @@ task:
 task:
   type: action
   params:
-    type: copy | move | print
+    type: copy | move | print | add
     to: 
       column: name
       place: top | bottom | random 
+    name: name
 
 task:
   type: group

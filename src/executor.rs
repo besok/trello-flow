@@ -12,12 +12,21 @@ use rand::{rngs::ThreadRng, Rng};
 
 #[derive(Clone, Debug)]
 pub struct ConfigurationFiles {
-    pub trello_cred: String,
+    pub trello: String,
     pub tasks: String,
+    pub bot: String,
 }
 impl ConfigurationFiles {
-    pub fn new(trello_cred: String, tasks: String) -> Result<ConfigurationFiles, FlowError> {
-        Ok(Self { trello_cred, tasks })
+    pub fn new(
+        trello_cred: String,
+        tasks: String,
+        bot: String,
+    ) -> Result<ConfigurationFiles, FlowError> {
+        Ok(Self {
+            trello: trello_cred,
+            tasks,
+            bot,
+        })
     }
 }
 
@@ -25,7 +34,7 @@ pub struct Executor {
     board_id: String,
     args: HashMap<String, String>,
     ctx: TaskContext,
-    connector: TrelloConnector,
+    pub connector: TrelloConnector,
     rand: ThreadRng,
 }
 
@@ -38,7 +47,7 @@ impl Executor {
         cfg: ConfigurationFiles,
         arguments: HashMap<String, String>,
     ) -> Result<Executor, FlowError> {
-        Executor::from_files(cfg.trello_cred.as_str(), cfg.tasks.as_str(), arguments)
+        Executor::from_files(cfg.trello.as_str(), cfg.tasks.as_str(), arguments)
     }
     pub fn from_files(
         cred_file: &str,
@@ -94,8 +103,16 @@ impl ToString for State {
     fn to_string(&self) -> String {
         match self {
             State::Pipe(e) => {
-                let c_names: Vec<String> = e.into_iter().map(|c| c.name.clone()).collect();
-                c_names.join("\n")
+                let c_names: Vec<String> = e
+                    .into_iter()
+                    .map(|c| format!("{} {}", c.name, c.short_url))
+                    .collect();
+                let c_names = c_names.join("\n");
+                if c_names.is_empty() {
+                    "no cards found".to_string()
+                } else {
+                    c_names
+                }
             }
             State::Init => "init".to_string(),
             State::End => "end".to_string(),
@@ -111,7 +128,10 @@ impl State {
     pub fn cards(&self) -> Result<Vec<Card>, FlowError> {
         match self {
             State::Pipe(elems) => Ok(elems.clone()),
-            _ => Err(FlowError::ProcessingError("no pipe results".to_string())),
+            s => Err(FlowError::ProcessingError(format!(
+                "no pipe results, state is {:?}",
+                s
+            ))),
         }
     }
 

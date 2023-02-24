@@ -67,7 +67,13 @@ pub enum ActionTask {
     PrintToConsole,
     CopyToColumn(Target),
     MoveToColumn(Target),
+    AddToColumn(CardInfo, Target),
 }
+#[derive(Debug, Clone, PartialEq)]
+pub struct CardInfo {
+    pub name: String,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum FilterTask {
     Name(String, bool),

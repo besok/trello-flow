@@ -5,8 +5,8 @@ use crate::err::{self, FlowError};
 use yaml_rust::Yaml;
 
 use super::tasks::{
-    ActionTask, FilterTask, FlowTask, GroupTask, OrderTask, Place, Source, TakeTask, Target, Task,
-    TaskBody,
+    ActionTask, CardInfo, FilterTask, FlowTask, GroupTask, OrderTask, Place, Source, TakeTask,
+    Target, Task, TaskBody,
 };
 
 #[derive(Clone)]
@@ -109,6 +109,14 @@ impl<'a> TryFrom<ParametrizedYaml<'a>> for TaskBody {
                     "move" => {
                         let to: Target = field_by_name("to", params).and_then(|y| y.try_into())?;
                         Ok(TaskBody::Action(ActionTask::MoveToColumn(to)))
+                    }
+                    "add" => {
+                        let to: Target =
+                            field_by_name("to", params.clone()).and_then(|y| y.try_into())?;
+                        let name = field_by_name("name", params)
+                            .and_then(as_string)
+                            .map(|name| CardInfo { name })?;
+                        Ok(TaskBody::Action(ActionTask::AddToColumn(name, to)))
                     }
                     _ => error(action_type.as_str()),
                 }
@@ -322,6 +330,26 @@ mod tests {
                 column: "repeat".to_string(),
                 place: Place::Top,
             })),
+        );
+    }
+    #[test]
+    fn take() {
+        success(
+            (&yaml(
+                r#"
+            type: take
+            params: 
+                from:
+                    type: board
+                    source: ENG
+        "#,
+            ))
+                .into(),
+            TaskBody::Take(TakeTask {
+                src: Source::Board,
+                size: 0,
+                place: Place::Top,
+            }),
         );
     }
 

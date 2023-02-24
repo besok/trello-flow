@@ -23,6 +23,7 @@ async fn main() {
     let cfg_files = ConfigurationFiles::new(
         "/home/besok/projects/trello-flow/examples/trello_cred.yml".to_string(),
         "/home/besok/projects/trello-flow/examples/task.yml".to_string(),
+        "/home/besok/projects/trello-flow/examples/bot.yml".to_string(),
     )
     .expect("the files should exist");
 
